@@ -1,0 +1,36 @@
+import os
+os.putenv('SDL_VIDEODRIVER', 'fbcon')
+os.putenv('SDL_FBDEV'       , '/dev/fb0')
+os.putenv('SDL_MOUSEDRV'    , 'TSLIB')
+os.putenv('SDL_NOMOUSE'     , '1')
+
+import pygame, random, time
+pygame.init()
+screen = pygame.display.set_mode((800, 480), pygame.FULLSCREEN)
+pygame.mouse.set_visible(False)
+
+symbols = [pygame.Surface((64, 64)) for _ in range(3)]
+for i, surf in enumerate(symbols):
+    surf.fill((random.randint(50,255), random.randint(50,255), random.randint(50,255)))
+
+def spin():
+    return [random.choice(symbols) for _ in range(3)]
+
+reels = spin()
+running = True
+
+while running:
+    screen.fill((0, 0, 0))
+    for i, reel in enumerate(reels):
+        screen.blit(reel, (100 + i*200, 208))
+    pygame.display.update()
+
+    for event in pygame.event.get():
+        if event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_SPACE:
+                reels = spin()
+            if event.key == pygame.K_ESCAPE:
+                running = False
+    time.sleep(0.05)
+
+pygame.quit()
