@@ -4,8 +4,8 @@ import random
 from time import time
 
 # --- CONFIGURATION ---
-SCREEN_WIDTH = 800
-SCREEN_HEIGHT = 480
+SCREEN_WIDTH = 1920
+SCREEN_HEIGHT = 1080
 FPS = 30
 REEL_COUNT = 3
 SYMBOL_HEIGHT = 128  # Match your image!
