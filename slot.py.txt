@@ -38,7 +38,19 @@ for i in range(REEL_COUNT):
 def draw_reel(reel_x, offset):
     for i in range(3):  # 3 visible symbols
         src_y = (offset + i * SYMBOL_HEIGHT) % strip_img.get_height()
-        symbol = strip_img.subsurface((0, src_y, SYMBOL_WIDTH, SYMBOL_HEIGHT))
+        if src_y + SYMBOL_HEIGHT <= strip_img.get_height():
+            # Full symbol fits in image bounds
+            symbol = strip_img.subsurface((0, src_y, SYMBOL_WIDTH, SYMBOL_HEIGHT))
+        else:
+            # Wrap around: stitch two parts together
+            first_part = strip_img.subsurface((0, src_y, SYMBOL_WIDTH, strip_img.get_height() - src_y))
+            second_part = strip_img.subsurface((0, 0, SYMBOL_WIDTH, SYMBOL_HEIGHT - (strip_img.get_height() - src_y)))
+
+            # Create temporary surface to stitch both
+            symbol = pygame.Surface((SYMBOL_WIDTH, SYMBOL_HEIGHT)).convert()
+            symbol.blit(first_part, (0, 0))
+            symbol.blit(second_part, (0, strip_img.get_height() - src_y))
+
         screen.blit(symbol, (reel_x, 100 + i * SYMBOL_HEIGHT))
 
 # --- MAIN LOOP ---
