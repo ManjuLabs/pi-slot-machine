@@ -10,8 +10,8 @@ SCREEN_HEIGHT = 600
 FPS = 25
 REEL_COUNT = 3
 SYMBOL_HEIGHT = 128
-SYMBOL_WIDTH = 128  # Original image width
-TARGET_WIDTH = 328  # Scaled reel width
+SYMBOL_WIDTH = 128  # Source width
+TARGET_WIDTH = 328  # Scaled width for display
 VISIBLE_SYMBOLS = 3
 VISIBLE_HEIGHT = VISIBLE_SYMBOLS * SYMBOL_HEIGHT
 TOP_MARGIN = math.floor((SCREEN_HEIGHT - VISIBLE_HEIGHT) / 2)
@@ -19,17 +19,22 @@ SPIN_DURATION = 2
 SPIN_SPEED = 64
 REEL_GAP = 20
 
+SPIN_COST = 10
+WIN_PAYOUT = 50
+
 # --- INIT ---
 pygame.init()
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
 pygame.display.set_caption("3-Reel Slot Machine")
 clock = pygame.time.Clock()
+font = pygame.font.SysFont(None, 48)
+win_font = pygame.font.SysFont(None, 72)
 
 # Load and slice the reel strip
 reel_strip = pygame.image.load("assets/reel_strip.png").convert_alpha()
 SYMBOL_COUNT = reel_strip.get_height() // SYMBOL_HEIGHT
 
-# Preprocess symbols: slice and scale for performance
+# Preprocess symbols
 symbol_surfaces = []
 for i in range(SYMBOL_COUNT):
     rect = pygame.Rect(0, i * SYMBOL_HEIGHT, SYMBOL_WIDTH, SYMBOL_HEIGHT)
@@ -37,15 +42,16 @@ for i in range(SYMBOL_COUNT):
     scaled = pygame.transform.scale(symbol, (TARGET_WIDTH, SYMBOL_HEIGHT)).convert_alpha()
     symbol_surfaces.append(scaled)
 
-# Reel states
+# Reel state
 offsets = [random.randint(0, SYMBOL_COUNT - 1) * SYMBOL_HEIGHT for _ in range(REEL_COUNT)]
 spinning = [False] * REEL_COUNT
 start_times = [0] * REEL_COUNT
+reel_positions = [(SCREEN_WIDTH - ((REEL_COUNT * TARGET_WIDTH) + (REEL_COUNT - 1) * REEL_GAP)) // 2 + i * (TARGET_WIDTH + REEL_GAP) for i in range(REEL_COUNT)]
 
-# Calculate reel X positions
-total_width = REEL_COUNT * TARGET_WIDTH + (REEL_COUNT - 1) * REEL_GAP
-start_x = (SCREEN_WIDTH - total_width) // 2
-reel_positions = [start_x + i * (TARGET_WIDTH + REEL_GAP) for i in range(REEL_COUNT)]
+# Game state
+credits = 100
+show_win = False
+win_timer = 0
 
 def draw_reels():
     screen.fill((0, 0, 0))
@@ -62,42 +68,83 @@ def draw_reels():
             y = TOP_MARGIN + ((j - 1) * SYMBOL_HEIGHT) - y_shift
             screen.blit(symbol_surfaces[index], (x, y))
 
-    # Mask top and bottom
+    # Mask
     pygame.draw.rect(screen, (0, 0, 0), pygame.Rect(0, 0, SCREEN_WIDTH, TOP_MARGIN))
     pygame.draw.rect(screen, (0, 0, 0), pygame.Rect(0, TOP_MARGIN + VISIBLE_HEIGHT, SCREEN_WIDTH, SCREEN_HEIGHT - (TOP_MARGIN + VISIBLE_HEIGHT)))
 
-    # Highlight box around center symbol of each reel
+    # Highlight payline
     for x in reel_positions:
-        highlight_rect = pygame.Rect(
-            x,
-            TOP_MARGIN + SYMBOL_HEIGHT,
-            TARGET_WIDTH,
-            SYMBOL_HEIGHT
-        )
-        pygame.draw.rect(screen, (255, 255, 0), highlight_rect, 4)  # Yellow border, 4px
+        highlight_rect = pygame.Rect(x, TOP_MARGIN + SYMBOL_HEIGHT, TARGET_WIDTH, SYMBOL_HEIGHT)
+        pygame.draw.rect(screen, (255, 255, 0), highlight_rect, 4)
+
+    # Credits display
+    credit_text = font.render(f"Credits: {credits}", True, (255, 255, 255))
+    screen.blit(credit_text, (20, 20))
+
+    # Win message
+    if show_win:
+        win_text = win_font.render("YOU WIN!", True, (0, 255, 0))
+        screen.blit(win_text, ((SCREEN_WIDTH - win_text.get_width()) // 2, TOP_MARGIN - 60))
 
     pygame.display.flip()
 
+def force_win():
+    # Force all reels to land on same center symbol
+    symbol_index = random.randint(0, SYMBOL_COUNT - 1)
+    for i in range(REEL_COUNT):
+        offsets[i] = (symbol_index * SYMBOL_HEIGHT) % (SYMBOL_COUNT * SYMBOL_HEIGHT)
+
+def check_win():
+    symbols = []
+    for i in range(REEL_COUNT):
+        index = int((offsets[i] % (SYMBOL_COUNT * SYMBOL_HEIGHT)) / SYMBOL_HEIGHT)
+        symbols.append(index)
+
+    return all(s == symbols[0] for s in symbols)
+
 def start_spin():
-    draw_reels.has_drawn_idle = False
+    global credits, show_win
+
+    if any(spinning) or credits < SPIN_COST:
+        return
+
+    credits -= SPIN_COST
+    show_win = False
+
     for i in range(REEL_COUNT):
         spinning[i] = True
-        start_times[i] = time() + i * 0.3  # stagger start time
+        start_times[i] = time() + i * 0.3
 
 def update_reels():
+    global show_win, win_timer, credits
     now = time()
+    all_done = True
+
     for i in range(REEL_COUNT):
         if spinning[i]:
             if now - start_times[i] >= SPIN_DURATION:
                 spinning[i] = False
-                # Snap to nearest symbol
                 offsets[i] = ((offsets[i] + SYMBOL_HEIGHT // 2) // SYMBOL_HEIGHT) % SYMBOL_COUNT * SYMBOL_HEIGHT
             else:
                 offsets[i] += SPIN_SPEED
+            all_done = False
+
+    if all_done and any(start_times):
+        # Spin just finished
+        if random.random() < 0.10:
+            force_win()
+
+        if check_win():
+            show_win = True
+            win_timer = pygame.time.get_ticks()
+            credits += WIN_PAYOUT
+        else:
+            show_win = False
 
 # --- MAIN LOOP ---
 draw_reels.has_drawn_idle = False
 running = True
+
 while running:
     dt = clock.tick(FPS)
     for event in pygame.event.get():
@@ -115,6 +162,9 @@ while running:
             draw_reels.has_drawn_idle = True
         else:
             clock.tick(10)
+
+        if show_win and pygame.time.get_ticks() - win_timer > 2000:
+            show_win = False
 
 pygame.quit()
 sys.exit()
