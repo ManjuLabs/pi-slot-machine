@@ -4,7 +4,7 @@ import random
 
 pygame.init()
 
-# Config
+# Constants
 SCREEN_WIDTH = 1024
 SCREEN_HEIGHT = 600
 SYMBOL_WIDTH = 128
@@ -18,54 +18,55 @@ FPS = 60
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
 pygame.display.set_caption("Slot Machine")
 
-# Load strip
+# Load strip and pre-slice
 try:
-    reel_strip = pygame.image.load("assets/reel_strip.png").convert_alpha()
-except pygame.error as e:
-    print(f"Error loading image: {e}")
+    strip = pygame.image.load("assets/reel_strip.png").convert_alpha()
+except Exception as e:
+    print(f"Failed to load reel_strip.png: {e}")
     sys.exit()
 
-strip_height = reel_strip.get_height()
+# Pre-slice symbols
+symbols = []
+for i in range(NUM_SYMBOLS):
+    rect = pygame.Rect(0, i * SYMBOL_HEIGHT, SYMBOL_WIDTH, SYMBOL_HEIGHT)
+    symbols.append(strip.subsurface(rect).copy())
 
 # Reel class
 class Reel:
     def __init__(self, x):
         self.x = x
-        self.offset = random.randint(0, strip_height - 1)
+        self.offset = random.uniform(0, NUM_SYMBOLS * SYMBOL_HEIGHT)
         self.speed = 0
         self.spinning = False
 
-    def start_spin(self):
+    def start(self):
+        self.speed = random.uniform(40, 60)
         self.spinning = True
-        self.speed = random.randint(40, 60)
 
     def update(self):
         if self.spinning:
-            self.offset = (self.offset + self.speed) % strip_height
-            self.speed *= 0.95  # friction
+            self.offset = (self.offset + self.speed) % (NUM_SYMBOLS * SYMBOL_HEIGHT)
+            self.speed *= 0.95
             if self.speed < 1:
                 self.spinning = False
                 self.offset = round(self.offset / SYMBOL_HEIGHT) * SYMBOL_HEIGHT
 
     def draw(self):
-        base_y = - (self.offset % SYMBOL_HEIGHT)
-        symbol_index = int(self.offset / SYMBOL_HEIGHT)
+        start_index = int(self.offset / SYMBOL_HEIGHT)
+        y_offset = - (self.offset % SYMBOL_HEIGHT)
 
-        for i in range(NUM_ROWS + 2):  # draw one extra to cover gaps
-            idx = (symbol_index + i) % NUM_SYMBOLS
-            symbol_rect = pygame.Rect(0, idx * SYMBOL_HEIGHT, SYMBOL_WIDTH, SYMBOL_HEIGHT)
-            symbol_img = reel_strip.subsurface(symbol_rect)
-            y = base_y + i * SYMBOL_HEIGHT
-            screen.blit(symbol_img, (self.x, y))
+        for i in range(NUM_ROWS + 2):
+            index = (start_index + i) % NUM_SYMBOLS
+            y = y_offset + i * SYMBOL_HEIGHT
+            screen.blit(symbols[index], (self.x, y))
 
+# Center reels on screen
+spacing = 40
+total_width = REEL_COUNT * SYMBOL_WIDTH + (REEL_COUNT - 1) * spacing
+start_x = (SCREEN_WIDTH - total_width) // 2
+reels = [Reel(start_x + i * (SYMBOL_WIDTH + spacing)) for i in range(REEL_COUNT)]
 
-# Layout
-total_reel_width = REEL_COUNT * SYMBOL_WIDTH + (REEL_COUNT - 1) * 40
-start_x = (SCREEN_WIDTH - total_reel_width) // 2
-
-reels = [Reel(start_x + i * (SYMBOL_WIDTH + 40)) for i in range(REEL_COUNT)]
-
-# Main loop
+# Game loop
 clock = pygame.time.Clock()
 running = True
 spinning = False
@@ -79,7 +80,7 @@ while running:
         elif event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE:
             if not spinning:
                 for reel in reels:
-                    reel.start_spin()
+                    reel.start()
                 spinning = True
 
     spinning = any(reel.spinning for reel in reels)
@@ -92,4 +93,3 @@ while running:
     clock.tick(FPS)
 
 pygame.quit()
-sys.exit()
