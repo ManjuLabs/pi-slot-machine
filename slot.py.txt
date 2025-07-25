@@ -5,10 +5,10 @@ from time import time
 
 # --- CONFIGURATION ---
 SCREEN_WIDTH = 1024
-SCREEN_HEIGHT = 1600
+SCREEN_HEIGHT = 600
 FPS = 30
 REEL_COUNT = 3
-SYMBOL_HEIGHT = 128  # Match your image!
+SYMBOL_HEIGHT = 128
 SPIN_DURATION = 2  # seconds each reel spins
 REEL_GAP = 40
 
@@ -19,7 +19,7 @@ pygame.display.set_caption("Slot Machine")
 clock = pygame.time.Clock()
 
 # --- LOAD ASSETS ---
-strip_img = pygame.image.load("assets/reel_strip.png").convert()
+strip_img = pygame.image.load("assets/reel_strip.png").convert_alpha()
 SYMBOL_COUNT = strip_img.get_height() // SYMBOL_HEIGHT
 SYMBOL_WIDTH = strip_img.get_width()
 
@@ -36,10 +36,17 @@ for i in range(REEL_COUNT):
 
 # --- DRAW SYMBOLS ---
 def draw_reel(reel_x, offset):
-    for i in range(3):  # 3 visible symbols
+    for i in range(3):  # 3 visible symbols per reel
         src_y = (offset + i * SYMBOL_HEIGHT) % strip_img.get_height()
-        symbol = strip_img.subsurface((0, src_y, SYMBOL_WIDTH, SYMBOL_HEIGHT))
-        screen.blit(symbol, (reel_x, 100 + i * SYMBOL_HEIGHT))
+        if src_y + SYMBOL_HEIGHT > strip_img.get_height():
+            # Avoid subsurface overflow by wrapping carefully
+            part1 = strip_img.subsurface((0, src_y, SYMBOL_WIDTH, strip_img.get_height() - src_y))
+            part2 = strip_img.subsurface((0, 0, SYMBOL_WIDTH, SYMBOL_HEIGHT - (strip_img.get_height() - src_y)))
+            screen.blit(part1, (reel_x, 100 + i * SYMBOL_HEIGHT))
+            screen.blit(part2, (reel_x, 100 + i * SYMBOL_HEIGHT + (strip_img.get_height() - src_y)))
+        else:
+            symbol = strip_img.subsurface((0, src_y, SYMBOL_WIDTH, SYMBOL_HEIGHT))
+            screen.blit(symbol, (reel_x, 100 + i * SYMBOL_HEIGHT))
 
 # --- MAIN LOOP ---
 running = True
