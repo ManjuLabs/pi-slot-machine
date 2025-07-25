@@ -4,34 +4,32 @@ import random
 
 pygame.init()
 
-# Constants
+# Screen config
 SCREEN_WIDTH = 1024
 SCREEN_HEIGHT = 600
+screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
+pygame.display.set_caption("Single Reel Slot Machine")
+
+# Symbol config
 SYMBOL_WIDTH = 128
 SYMBOL_HEIGHT = 128
 NUM_SYMBOLS = 6
-NUM_ROWS = 3
-REEL_COUNT = 3
+NUM_ROWS = 3  # visible symbols
 FPS = 60
 
-# Display
-screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
-pygame.display.set_caption("Slot Machine")
-
-# Load strip and pre-slice
+# Load strip and slice symbols
 try:
     strip = pygame.image.load("assets/reel_strip.png").convert_alpha()
 except Exception as e:
     print(f"Failed to load reel_strip.png: {e}")
     sys.exit()
 
-# Pre-slice symbols
 symbols = []
 for i in range(NUM_SYMBOLS):
     rect = pygame.Rect(0, i * SYMBOL_HEIGHT, SYMBOL_WIDTH, SYMBOL_HEIGHT)
     symbols.append(strip.subsurface(rect).copy())
 
-# Reel class
+# Reel class (single reel)
 class Reel:
     def __init__(self, x):
         self.x = x
@@ -60,11 +58,9 @@ class Reel:
             y = y_offset + i * SYMBOL_HEIGHT
             screen.blit(symbols[index], (self.x, y))
 
-# Center reels on screen
-spacing = 40
-total_width = REEL_COUNT * SYMBOL_WIDTH + (REEL_COUNT - 1) * spacing
-start_x = (SCREEN_WIDTH - total_width) // 2
-reels = [Reel(start_x + i * (SYMBOL_WIDTH + spacing)) for i in range(REEL_COUNT)]
+# Center one reel
+reel_x = (SCREEN_WIDTH - SYMBOL_WIDTH) // 2
+reel = Reel(reel_x)
 
 # Game loop
 clock = pygame.time.Clock()
@@ -79,15 +75,16 @@ while running:
             running = False
         elif event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE:
             if not spinning:
-                for reel in reels:
-                    reel.start()
+                reel.start()
                 spinning = True
 
-    spinning = any(reel.spinning for reel in reels)
+    if reel.spinning:
+        spinning = True
+    else:
+        spinning = False
 
-    for reel in reels:
-        reel.update()
-        reel.draw()
+    reel.update()
+    reel.draw()
 
     pygame.display.flip()
     clock.tick(FPS)
