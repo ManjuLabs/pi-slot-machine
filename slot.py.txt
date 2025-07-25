@@ -1,81 +1,102 @@
 import pygame
 import sys
 import random
-from time import time
 
-# --- CONFIGURATION ---
+# Initialize Pygame
+pygame.init()
+
+# Constants
 SCREEN_WIDTH = 1024
 SCREEN_HEIGHT = 600
-FPS = 30
-REEL_COUNT = 3
-SYMBOL_HEIGHT = 128  # Match your image!
-SPIN_DURATION = 5  # seconds each reel spins
-REEL_GAP = 40
+ORIG_SYMBOL_SIZE = 128     # original size of each symbol in the strip
+DRAW_SYMBOL_SIZE = 160     # how large to draw each symbol on screen
+NUM_ROWS = 3               # visible rows
+NUM_REELS = 3              # number of reels
+REEL_SPACING = 20          # space between reels in pixels
+FPS = 60
 
-# --- INIT ---
-pygame.init()
-screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.FULLSCREEN)
+# Calculate layout
+REEL_HEIGHT = DRAW_SYMBOL_SIZE * NUM_ROWS
+MARGIN_TOP = (SCREEN_HEIGHT - REEL_HEIGHT) // 2
+START_X = (SCREEN_WIDTH - (NUM_REELS * DRAW_SYMBOL_SIZE + (NUM_REELS - 1) * REEL_SPACING)) // 2
+
+# Setup screen
+screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
 pygame.display.set_caption("Slot Machine")
-clock = pygame.time.Clock()
 
-# --- LOAD ASSETS ---
-strip_img = pygame.image.load("assets/reel_strip.png").convert()
-SYMBOL_COUNT = strip_img.get_height() // SYMBOL_HEIGHT
-SYMBOL_WIDTH = strip_img.get_width()
+# Load image strip (make sure it's in the same folder)
+try:
+    reel_strip = pygame.image.load("reel_strip.png").convert_alpha()
+except pygame.error as e:
+    print(f"Failed to load image: {e}")
+    sys.exit()
 
-# --- Prepare Reels ---
+strip_height = reel_strip.get_height()
+symbol_count = strip_height // ORIG_SYMBOL_SIZE
+
+# Reel class to manage spin state
+class Reel:
+    def __init__(self, x):
+        self.x = x
+        self.offset = random.randint(0, strip_height)
+        self.speed = 0
+        self.spinning = False
+
+    def start_spin(self):
+        self.spinning = True
+        self.speed = random.randint(40, 60)
+
+    def update(self):
+        if self.spinning:
+            self.offset = (self.offset + self.speed) % strip_height
+            self.speed *= 0.97  # slow down
+            if self.speed < 1:
+                self.spinning = False
+                self.speed = 0
+                self.offset = round(self.offset / ORIG_SYMBOL_SIZE) * ORIG_SYMBOL_SIZE
+
+    def draw(self):
+        for i in range(NUM_ROWS + 1):  # +1 for smooth scrolling
+            symbol_y = (self.offset + i * ORIG_SYMBOL_SIZE) % strip_height
+            rect = pygame.Rect(0, symbol_y, ORIG_SYMBOL_SIZE, ORIG_SYMBOL_SIZE)
+            scaled = pygame.transform.scale(
+                reel_strip.subsurface(rect),
+                (DRAW_SYMBOL_SIZE, DRAW_SYMBOL_SIZE)
+            )
+            y = MARGIN_TOP + i * DRAW_SYMBOL_SIZE - (self.offset % ORIG_SYMBOL_SIZE)
+            screen.blit(scaled, (self.x, y))
+
+# Initialize reels
 reels = []
-for i in range(REEL_COUNT):
-    offset = random.randint(0, SYMBOL_COUNT - 1) * SYMBOL_HEIGHT
-    reels.append({
-        "offset": offset,
-        "spinning": True,
-        "start_time": time(),
-        "delay": i * 0.5,  # staggered stop
-    })
+for i in range(NUM_REELS):
+    x = START_X + i * (DRAW_SYMBOL_SIZE + REEL_SPACING)
+    reels.append(Reel(x))
 
-# --- DRAW SYMBOLS ---
-def draw_reel(reel_x, offset):
-    for i in range(3):  # 3 visible symbols
-        src_y = (offset + i * SYMBOL_HEIGHT) % strip_img.get_height()
-        if src_y + SYMBOL_HEIGHT <= strip_img.get_height():
-            # Full symbol fits in image bounds
-            symbol = strip_img.subsurface((0, src_y, SYMBOL_WIDTH, SYMBOL_HEIGHT))
-        else:
-            # Wrap around: stitch two parts together
-            first_part = strip_img.subsurface((0, src_y, SYMBOL_WIDTH, strip_img.get_height() - src_y))
-            second_part = strip_img.subsurface((0, 0, SYMBOL_WIDTH, SYMBOL_HEIGHT - (strip_img.get_height() - src_y)))
-
-            # Create temporary surface to stitch both
-            symbol = pygame.Surface((SYMBOL_WIDTH, SYMBOL_HEIGHT)).convert()
-            symbol.blit(first_part, (0, 0))
-            symbol.blit(second_part, (0, strip_img.get_height() - src_y))
-
-        screen.blit(symbol, (reel_x, 100 + i * SYMBOL_HEIGHT))
-
-# --- MAIN LOOP ---
+# Main loop
+clock = pygame.time.Clock()
 running = True
+spinning = False
+
 while running:
-    screen.fill((0, 0, 0))  # black background
+    screen.fill((0, 0, 0))  # clear screen with black
 
     for event in pygame.event.get():
-        if event.type == pygame.QUIT or (
-            event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE):
+        if event.type == pygame.QUIT:
             running = False
 
-    now = time()
+        elif event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_SPACE and not spinning:
+                for reel in reels:
+                    reel.start_spin()
+                spinning = True
 
-    for i, reel in enumerate(reels):
-        if reel["spinning"]:
-            elapsed = now - reel["start_time"]
-            if elapsed > SPIN_DURATION + reel["delay"]:
-                reel["spinning"] = False
-                reel["offset"] = (int(reel["offset"] / SYMBOL_HEIGHT) % SYMBOL_COUNT) * SYMBOL_HEIGHT
-            else:
-                reel["offset"] = (reel["offset"] + 32) % strip_img.get_height()
-
-        x = (SCREEN_WIDTH - (REEL_COUNT * SYMBOL_WIDTH + (REEL_COUNT - 1) * REEL_GAP)) // 2 + i * (SYMBOL_WIDTH + REEL_GAP)
-        draw_reel(x, reel["offset"])
+    # Update and draw reels
+    spinning = False
+    for reel in reels:
+        reel.update()
+        reel.draw()
+        if reel.spinning:
+            spinning = True
 
     pygame.display.flip()
     clock.tick(FPS)
