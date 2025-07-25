@@ -26,7 +26,7 @@ pygame.display.set_caption("Slot Machine")
 
 # Load image strip (make sure it's in the same folder)
 try:
-    reel_strip = pygame.image.load("reel_strip.png").convert_alpha()
+    reel_strip = pygame.image.load("assets/reel_strip.png").convert_alpha()
 except pygame.error as e:
     print(f"Failed to load image: {e}")
     sys.exit()
