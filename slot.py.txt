@@ -55,14 +55,14 @@ def draw_reels():
         start_index = int(offset // SYMBOL_HEIGHT)
         y_shift = offset % SYMBOL_HEIGHT
 
-        # Draw just enough to cover 3 symbols
-        symbols_to_draw = VISIBLE_SYMBOLS + 2  # one extra above/below
+        symbols_to_draw = VISIBLE_SYMBOLS + 2
         for j in range(symbols_to_draw):
             index = (start_index + j) % SYMBOL_COUNT
-            y = TOP_MARGIN + (j * SYMBOL_HEIGHT) - y_shift
+            # FIXED: Center symbols properly
+            y = TOP_MARGIN + ((j - 1) * SYMBOL_HEIGHT) - y_shift
             screen.blit(symbol_surfaces[index], (x, y))
 
-    # Draw top and bottom masks (cover overflow)
+    # Draw top and bottom masks to hide overflow
     pygame.draw.rect(screen, (0, 0, 0), pygame.Rect(0, 0, SCREEN_WIDTH, TOP_MARGIN))
     pygame.draw.rect(screen, (0, 0, 0), pygame.Rect(0, TOP_MARGIN + VISIBLE_HEIGHT, SCREEN_WIDTH, SCREEN_HEIGHT - (TOP_MARGIN + VISIBLE_HEIGHT)))
 
