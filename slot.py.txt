@@ -12,6 +12,7 @@ SYMBOL_HEIGHT = 128
 SPIN_DURATION = 2  # seconds
 REEL_GAP = 20
 TOP_MARGIN = 0  # draw from top
+TARGET_REEL_WIDTH = 328  # New scaled reel width to fill screen
 
 # --- INIT ---
 pygame.init()
@@ -19,17 +20,23 @@ screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
 pygame.display.set_caption("3-Reel Slot Machine")
 clock = pygame.time.Clock()
 
-# Load reel strip from assets
-reel_strip = pygame.image.load("assets/reel_strip.png").convert_alpha()
-SYMBOL_COUNT = reel_strip.get_height() // SYMBOL_HEIGHT
+# Load and scale the reel strip from assets
+original_strip = pygame.image.load("assets/reel_strip.png").convert_alpha()
+SYMBOL_COUNT = original_strip.get_height() // SYMBOL_HEIGHT
+
+# Scale reel strip to wider reels (328px × 768px)
+reel_strip = pygame.transform.scale(
+    original_strip,
+    (TARGET_REEL_WIDTH, SYMBOL_COUNT * SYMBOL_HEIGHT)
+)
 SYMBOL_WIDTH = reel_strip.get_width()
 
-# State per reel
+# Reel state
 offsets = [random.randint(0, SYMBOL_COUNT - 1) * SYMBOL_HEIGHT for _ in range(REEL_COUNT)]
 spinning = [False] * REEL_COUNT
 start_times = [0] * REEL_COUNT
 
-# Positioning
+# Positioning for centered layout
 total_reel_width = REEL_COUNT * SYMBOL_WIDTH + (REEL_COUNT - 1) * REEL_GAP
 start_x = (SCREEN_WIDTH - total_reel_width) // 2
 reel_positions = [start_x + i * (SYMBOL_WIDTH + REEL_GAP) for i in range(REEL_COUNT)]
@@ -41,8 +48,7 @@ def draw_reels():
         reel_x = reel_positions[i]
         y_offset = offsets[i] % (SYMBOL_COUNT * SYMBOL_HEIGHT)
 
-        # Draw enough symbols to fill screen height
-        symbols_to_draw = SCREEN_HEIGHT // SYMBOL_HEIGHT + 2  # ~8 symbols
+        symbols_to_draw = SCREEN_HEIGHT // SYMBOL_HEIGHT + 2
         first_symbol_index = int(y_offset // SYMBOL_HEIGHT)
 
         for j in range(symbols_to_draw):
@@ -56,7 +62,7 @@ def draw_reels():
 def start_spin():
     for i in range(REEL_COUNT):
         spinning[i] = True
-        start_times[i] = time() + i * 0.3  # delay each reel start
+        start_times[i] = time() + i * 0.3  # staggered start
 
 def update_reels():
     current_time = time()
@@ -64,10 +70,10 @@ def update_reels():
         if spinning[i]:
             if current_time - start_times[i] >= SPIN_DURATION:
                 spinning[i] = False
-                # Snap to nearest full symbol
+                # Snap to symbol boundary
                 offsets[i] = ((offsets[i] + SYMBOL_HEIGHT // 2) // SYMBOL_HEIGHT) % SYMBOL_COUNT * SYMBOL_HEIGHT
             else:
-                offsets[i] += 30  # pixels per frame (spin speed)
+                offsets[i] += 30  # pixels per frame
 
 # --- MAIN LOOP ---
 running = True
