@@ -19,18 +19,17 @@ screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
 pygame.display.set_caption("3-Reel Slot Machine")
 clock = pygame.time.Clock()
 
-# Load the reel strip image
+# Load the reel strip image (128x768)
 reel_strip = pygame.image.load("assets/reel_strip.png").convert_alpha()
 SYMBOL_COUNT = reel_strip.get_height() // SYMBOL_HEIGHT
 SYMBOL_WIDTH = reel_strip.get_width()
 
-# Prepare reels (random starting position for each)
-reels = [0] * REEL_COUNT
-offsets = [0] * REEL_COUNT
+# Reel state
+offsets = [random.randint(0, SYMBOL_COUNT - 1) * SYMBOL_HEIGHT for _ in range(REEL_COUNT)]
 spinning = [False] * REEL_COUNT
 start_times = [0] * REEL_COUNT
 
-# Calculate reel positions
+# Calculate X positions for the 3 reels
 total_reel_width = REEL_COUNT * SYMBOL_WIDTH + (REEL_COUNT - 1) * REEL_GAP
 start_x = (SCREEN_WIDTH - total_reel_width) // 2
 reel_positions = [start_x + i * (SYMBOL_WIDTH + REEL_GAP) for i in range(REEL_COUNT)]
@@ -41,23 +40,30 @@ def draw_reels():
         y_offset = offsets[i] % (SYMBOL_COUNT * SYMBOL_HEIGHT)
         reel_x = reel_positions[i]
 
-        # Draw 2 symbols per reel for wrapping effect
+        # Draw two symbols vertically (for smooth spin loop)
         for j in range(2):
-            index = (y_offset // SYMBOL_HEIGHT + j) % SYMBOL_COUNT
-            symbol_rect = pygame.Rect(0, index * SYMBOL_HEIGHT, SYMBOL_WIDTH, SYMBOL_HEIGHT)
-            screen.blit(reel_strip, (reel_x, TOP_MARGIN + j * -SYMBOL_HEIGHT + y_offset), symbol_rect)
+            symbol_index = (y_offset // SYMBOL_HEIGHT + j) % SYMBOL_COUNT
+            symbol_rect = pygame.Rect(0, symbol_index * SYMBOL_HEIGHT, SYMBOL_WIDTH, SYMBOL_HEIGHT)
+            draw_y = TOP_MARGIN + j * -SYMBOL_HEIGHT + y_offset
+            screen.blit(reel_strip, (reel_x, draw_y), symbol_rect)
 
     pygame.display.flip()
 
 def start_spin():
     for i in range(REEL_COUNT):
         spinning[i] = True
-        start_times[i] = time() + i * 0.3  # delay between reels
+        start_times[i] = time() + i * 0.3  # staggered spin delays
 
-def stop_spin():
+def update_reels():
+    current_time = time()
     for i in range(REEL_COUNT):
-        spinning[i] = False
-        offsets[i] = random.randint(0, SYMBOL_COUNT - 1) * SYMBOL_HEIGHT
+        if spinning[i]:
+            if current_time - start_times[i] >= SPIN_DURATION:
+                spinning[i] = False
+                # Snap to nearest full symbol
+                offsets[i] = ((offsets[i] + SYMBOL_HEIGHT // 2) // SYMBOL_HEIGHT) % SYMBOL_COUNT * SYMBOL_HEIGHT
+            else:
+                offsets[i] += 30  # spin speed
 
 # --- MAIN LOOP ---
 running = True
@@ -69,16 +75,7 @@ while running:
         elif event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE:
             start_spin()
 
-    # Update reel spinning
-    current_time = time()
-    for i in range(REEL_COUNT):
-        if spinning[i]:
-            if current_time - start_times[i] >= SPIN_DURATION:
-                spinning[i] = False
-                offsets[i] = ((offsets[i] // SYMBOL_HEIGHT) % SYMBOL_COUNT) * SYMBOL_HEIGHT
-            else:
-                offsets[i] += 30  # spin speed
-
+    update_reels()
     draw_reels()
 
 pygame.quit()
