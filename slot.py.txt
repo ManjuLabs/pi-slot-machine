@@ -13,7 +13,7 @@ SYMBOL_WIDTH = 128  # original size
 TARGET_WIDTH = 328  # scaled width
 SPIN_DURATION = 2
 REEL_GAP = 20
-SPIN_SPEED = 32  # pixels per frame (tweak as needed)
+SPIN_SPEED = 64  # pixels per frame (tweak as needed)
 
 # --- INIT ---
 pygame.init()
