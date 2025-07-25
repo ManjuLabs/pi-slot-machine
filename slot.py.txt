@@ -6,31 +6,34 @@ from time import time
 # --- CONFIGURATION ---
 SCREEN_WIDTH = 1024
 SCREEN_HEIGHT = 600
-FPS = 30
+FPS = 25  # Lowered for performance
 REEL_COUNT = 3
 SYMBOL_HEIGHT = 128
-SYMBOL_WIDTH = 128  # original size
-TARGET_WIDTH = 328  # scaled width
-SPIN_DURATION = 2
+SYMBOL_WIDTH = 128  # Original image width
+TARGET_WIDTH = 328  # Scaled reel width to fill screen
+VISIBLE_SYMBOLS = 3
+VISIBLE_HEIGHT = VISIBLE_SYMBOLS * SYMBOL_HEIGHT
+TOP_MARGIN = (SCREEN_HEIGHT - VISIBLE_HEIGHT) // 2  # Centered vertically
+SPIN_DURATION = 2  # Seconds
+SPIN_SPEED = 64  # Pixels per frame
 REEL_GAP = 20
-SPIN_SPEED = 64  # pixels per frame (tweak as needed)
 
 # --- INIT ---
 pygame.init()
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
-pygame.display.set_caption("Slot Machine")
+pygame.display.set_caption("3-Reel Slot Machine")
 clock = pygame.time.Clock()
 
-# Load reel strip
+# Load and slice the reel strip from assets
 strip_image = pygame.image.load("assets/reel_strip.png").convert_alpha()
 SYMBOL_COUNT = strip_image.get_height() // SYMBOL_HEIGHT
 
-# --- Slice and scale symbols once ---
+# --- Pre-slice and scale symbols (for performance) ---
 symbol_surfaces = []
 for i in range(SYMBOL_COUNT):
     rect = pygame.Rect(0, i * SYMBOL_HEIGHT, SYMBOL_WIDTH, SYMBOL_HEIGHT)
     symbol = strip_image.subsurface(rect)
-    scaled = pygame.transform.scale(symbol, (TARGET_WIDTH, SYMBOL_HEIGHT))
+    scaled = pygame.transform.scale(symbol, (TARGET_WIDTH, SYMBOL_HEIGHT)).convert_alpha()
     symbol_surfaces.append(scaled)
 
 # Reel state
@@ -45,25 +48,31 @@ reel_positions = [start_x + i * (TARGET_WIDTH + REEL_GAP) for i in range(REEL_CO
 
 def draw_reels():
     screen.fill((0, 0, 0))
+
     for i in range(REEL_COUNT):
         x = reel_positions[i]
         offset = offsets[i] % (SYMBOL_COUNT * SYMBOL_HEIGHT)
         start_index = int(offset // SYMBOL_HEIGHT)
         y_shift = offset % SYMBOL_HEIGHT
 
-        # Draw enough symbols to cover screen height
-        visible_count = SCREEN_HEIGHT // SYMBOL_HEIGHT + 2
-        for j in range(visible_count):
+        # Draw just enough to cover 3 symbols
+        symbols_to_draw = VISIBLE_SYMBOLS + 2  # one extra above/below
+        for j in range(symbols_to_draw):
             index = (start_index + j) % SYMBOL_COUNT
-            y = (j * SYMBOL_HEIGHT) - y_shift
+            y = TOP_MARGIN + (j * SYMBOL_HEIGHT) - y_shift
             screen.blit(symbol_surfaces[index], (x, y))
+
+    # Draw top and bottom masks (cover overflow)
+    pygame.draw.rect(screen, (0, 0, 0), pygame.Rect(0, 0, SCREEN_WIDTH, TOP_MARGIN))
+    pygame.draw.rect(screen, (0, 0, 0), pygame.Rect(0, TOP_MARGIN + VISIBLE_HEIGHT, SCREEN_WIDTH, SCREEN_HEIGHT - (TOP_MARGIN + VISIBLE_HEIGHT)))
 
     pygame.display.flip()
 
 def start_spin():
+    draw_reels.has_drawn_idle = False
     for i in range(REEL_COUNT):
         spinning[i] = True
-        start_times[i] = time() + i * 0.3
+        start_times[i] = time() + i * 0.3  # staggered spin
 
 def update_reels():
     now = time()
@@ -71,11 +80,13 @@ def update_reels():
         if spinning[i]:
             if now - start_times[i] >= SPIN_DURATION:
                 spinning[i] = False
+                # Snap to nearest symbol
                 offsets[i] = ((offsets[i] + SYMBOL_HEIGHT // 2) // SYMBOL_HEIGHT) % SYMBOL_COUNT * SYMBOL_HEIGHT
             else:
                 offsets[i] += SPIN_SPEED
 
 # --- MAIN LOOP ---
+draw_reels.has_drawn_idle = False
 running = True
 while running:
     dt = clock.tick(FPS)
@@ -85,8 +96,15 @@ while running:
         elif event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE:
             start_spin()
 
-    update_reels()
-    draw_reels()
+    if any(spinning):
+        update_reels()
+        draw_reels()
+    else:
+        if not draw_reels.has_drawn_idle:
+            draw_reels()
+            draw_reels.has_drawn_idle = True
+        else:
+            clock.tick(10)
 
 pygame.quit()
 sys.exit()
