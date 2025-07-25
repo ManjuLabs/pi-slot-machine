@@ -9,9 +9,9 @@ SCREEN_HEIGHT = 600
 FPS = 30
 REEL_COUNT = 3
 SYMBOL_HEIGHT = 128
-SPIN_DURATION = 2  # seconds each reel spins
-REEL_GAP = 20      # spacing between reels
-TOP_MARGIN = (SCREEN_HEIGHT - SYMBOL_HEIGHT) // 2
+SPIN_DURATION = 2  # seconds
+REEL_GAP = 20
+TOP_MARGIN = 0  # draw from top
 
 # --- INIT ---
 pygame.init()
@@ -19,32 +19,36 @@ screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
 pygame.display.set_caption("3-Reel Slot Machine")
 clock = pygame.time.Clock()
 
-# Load the reel strip image (128x768)
+# Load reel strip from assets
 reel_strip = pygame.image.load("assets/reel_strip.png").convert_alpha()
 SYMBOL_COUNT = reel_strip.get_height() // SYMBOL_HEIGHT
 SYMBOL_WIDTH = reel_strip.get_width()
 
-# Reel state
+# State per reel
 offsets = [random.randint(0, SYMBOL_COUNT - 1) * SYMBOL_HEIGHT for _ in range(REEL_COUNT)]
 spinning = [False] * REEL_COUNT
 start_times = [0] * REEL_COUNT
 
-# Calculate X positions for the 3 reels
+# Positioning
 total_reel_width = REEL_COUNT * SYMBOL_WIDTH + (REEL_COUNT - 1) * REEL_GAP
 start_x = (SCREEN_WIDTH - total_reel_width) // 2
 reel_positions = [start_x + i * (SYMBOL_WIDTH + REEL_GAP) for i in range(REEL_COUNT)]
 
 def draw_reels():
     screen.fill((0, 0, 0))
-    for i in range(REEL_COUNT):
-        y_offset = offsets[i] % (SYMBOL_COUNT * SYMBOL_HEIGHT)
-        reel_x = reel_positions[i]
 
-        # Draw two symbols vertically (for smooth spin loop)
-        for j in range(2):
-            symbol_index = (y_offset // SYMBOL_HEIGHT + j) % SYMBOL_COUNT
+    for i in range(REEL_COUNT):
+        reel_x = reel_positions[i]
+        y_offset = offsets[i] % (SYMBOL_COUNT * SYMBOL_HEIGHT)
+
+        # Draw enough symbols to fill screen height
+        symbols_to_draw = SCREEN_HEIGHT // SYMBOL_HEIGHT + 2  # ~8 symbols
+        first_symbol_index = int(y_offset // SYMBOL_HEIGHT)
+
+        for j in range(symbols_to_draw):
+            symbol_index = (first_symbol_index + j) % SYMBOL_COUNT
             symbol_rect = pygame.Rect(0, symbol_index * SYMBOL_HEIGHT, SYMBOL_WIDTH, SYMBOL_HEIGHT)
-            draw_y = TOP_MARGIN + j * -SYMBOL_HEIGHT + y_offset
+            draw_y = TOP_MARGIN + (j * SYMBOL_HEIGHT) - (y_offset % SYMBOL_HEIGHT)
             screen.blit(reel_strip, (reel_x, draw_y), symbol_rect)
 
     pygame.display.flip()
@@ -52,7 +56,7 @@ def draw_reels():
 def start_spin():
     for i in range(REEL_COUNT):
         spinning[i] = True
-        start_times[i] = time() + i * 0.3  # staggered spin delays
+        start_times[i] = time() + i * 0.3  # delay each reel start
 
 def update_reels():
     current_time = time()
@@ -63,7 +67,7 @@ def update_reels():
                 # Snap to nearest full symbol
                 offsets[i] = ((offsets[i] + SYMBOL_HEIGHT // 2) // SYMBOL_HEIGHT) % SYMBOL_COUNT * SYMBOL_HEIGHT
             else:
-                offsets[i] += 30  # spin speed
+                offsets[i] += 30  # pixels per frame (spin speed)
 
 # --- MAIN LOOP ---
 running = True
