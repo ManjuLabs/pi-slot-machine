@@ -2,10 +2,9 @@ import pygame
 import sys
 import random
 
-# Initialize
 pygame.init()
 
-# Constants
+# Config
 SCREEN_WIDTH = 1024
 SCREEN_HEIGHT = 600
 SYMBOL_WIDTH = 128
@@ -15,23 +14,18 @@ NUM_ROWS = 3
 REEL_COUNT = 3
 FPS = 60
 
-# Setup screen
+# Display
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
 pygame.display.set_caption("Slot Machine")
 
-# Load reel strip
+# Load strip
 try:
-    reel_strip = pygame.image.load("assets/reel_strip.png").convert_alpha()
+    reel_strip = pygame.image.load("asset/reel_strip.png").convert_alpha()
 except pygame.error as e:
-    print(f"Image load error: {e}")
+    print(f"Error loading image: {e}")
     sys.exit()
 
 strip_height = reel_strip.get_height()
-strip_width = reel_strip.get_width()
-
-if strip_width != SYMBOL_WIDTH or strip_height != SYMBOL_HEIGHT * NUM_SYMBOLS:
-    print("❌ Error: Image size must be 128x768 (128 width × 128 × 6 height)")
-    sys.exit()
 
 # Reel class
 class Reel:
@@ -48,46 +42,28 @@ class Reel:
     def update(self):
         if self.spinning:
             self.offset = (self.offset + self.speed) % strip_height
-            self.speed *= 0.95
+            self.speed *= 0.95  # friction
             if self.speed < 1:
                 self.spinning = False
                 self.offset = round(self.offset / SYMBOL_HEIGHT) * SYMBOL_HEIGHT
 
     def draw(self):
-        for i in range(NUM_ROWS + 1):
-            symbol_y = int((self.offset + i * SYMBOL_HEIGHT) % strip_height)
+        base_y = - (self.offset % SYMBOL_HEIGHT)
+        symbol_index = int(self.offset / SYMBOL_HEIGHT)
 
-            # Fix subsurface overflow edge case
-            if symbol_y + SYMBOL_HEIGHT > strip_height:
-                # Wrap around: create 2 subsurfaces and stitch together
-                top = strip_height - symbol_y
-                bottom = SYMBOL_HEIGHT - top
-                top_rect = pygame.Rect(0, symbol_y, SYMBOL_WIDTH, top)
-                bottom_rect = pygame.Rect(0, 0, SYMBOL_WIDTH, bottom)
-
-                top_img = reel_strip.subsurface(top_rect)
-                bottom_img = reel_strip.subsurface(bottom_rect)
-
-                stitched = pygame.Surface((SYMBOL_WIDTH, SYMBOL_HEIGHT), pygame.SRCALPHA)
-                stitched.blit(top_img, (0, 0))
-                stitched.blit(bottom_img, (0, top))
-
-                screen.blit(stitched, (self.x, i * SYMBOL_HEIGHT))
-            else:
-                rect = pygame.Rect(0, symbol_y, SYMBOL_WIDTH, SYMBOL_HEIGHT)
-                image = reel_strip.subsurface(rect)
-                screen.blit(image, (self.x, i * SYMBOL_HEIGHT))
+        for i in range(NUM_ROWS + 2):  # draw one extra to cover gaps
+            idx = (symbol_index + i) % NUM_SYMBOLS
+            symbol_rect = pygame.Rect(0, idx * SYMBOL_HEIGHT, SYMBOL_WIDTH, SYMBOL_HEIGHT)
+            symbol_img = reel_strip.subsurface(symbol_rect)
+            y = base_y + i * SYMBOL_HEIGHT
+            screen.blit(symbol_img, (self.x, y))
 
 
-# Calculate reel spacing
+# Layout
 total_reel_width = REEL_COUNT * SYMBOL_WIDTH + (REEL_COUNT - 1) * 40
 start_x = (SCREEN_WIDTH - total_reel_width) // 2
 
-# Init reels
-reels = []
-for i in range(REEL_COUNT):
-    x = start_x + i * (SYMBOL_WIDTH + 40)
-    reels.append(Reel(x))
+reels = [Reel(start_x + i * (SYMBOL_WIDTH + 40)) for i in range(REEL_COUNT)]
 
 # Main loop
 clock = pygame.time.Clock()
@@ -100,7 +76,6 @@ while running:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
-
         elif event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE:
             if not spinning:
                 for reel in reels:
