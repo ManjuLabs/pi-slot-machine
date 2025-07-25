@@ -2,39 +2,33 @@ import pygame
 import sys
 import random
 
-# Initialize Pygame
+# Initialize
 pygame.init()
 
 # Constants
-SCREEN_WIDTH = 1024
-SCREEN_HEIGHT = 600
-ORIG_SYMBOL_SIZE = 128     # original size of each symbol in the strip
-DRAW_SYMBOL_SIZE = 160     # how large to draw each symbol on screen
-NUM_ROWS = 3               # visible rows
-NUM_REELS = 3              # number of reels
-REEL_SPACING = 20          # space between reels in pixels
+SCREEN_WIDTH = 800
+SCREEN_HEIGHT = 400
+SYMBOL_HEIGHT = 128
+SYMBOL_WIDTH = 128
+NUM_SYMBOLS = 6
+NUM_ROWS = 3
+REEL_COUNT = 3
 FPS = 60
-
-# Calculate layout
-REEL_HEIGHT = DRAW_SYMBOL_SIZE * NUM_ROWS
-MARGIN_TOP = (SCREEN_HEIGHT - REEL_HEIGHT) // 2
-START_X = (SCREEN_WIDTH - (NUM_REELS * DRAW_SYMBOL_SIZE + (NUM_REELS - 1) * REEL_SPACING)) // 2
 
 # Setup screen
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
 pygame.display.set_caption("Slot Machine")
 
-# Load image strip (make sure it's in the same folder)
+# Load reel strip
 try:
-    reel_strip = pygame.image.load("assets/reel_strip.png").convert_alpha()
+    reel_strip = pygame.image.load("asset/reel_strip.png").convert_alpha()
 except pygame.error as e:
-    print(f"Failed to load image: {e}")
+    print(f"Image load error: {e}")
     sys.exit()
 
 strip_height = reel_strip.get_height()
-symbol_count = strip_height // ORIG_SYMBOL_SIZE
 
-# Reel class to manage spin state
+# Reel class
 class Reel:
     def __init__(self, x):
         self.x = x
@@ -49,27 +43,23 @@ class Reel:
     def update(self):
         if self.spinning:
             self.offset = (self.offset + self.speed) % strip_height
-            self.speed *= 0.97  # slow down
+            self.speed *= 0.95
             if self.speed < 1:
                 self.spinning = False
-                self.speed = 0
-                self.offset = round(self.offset / ORIG_SYMBOL_SIZE) * ORIG_SYMBOL_SIZE
+                self.offset = round(self.offset / SYMBOL_HEIGHT) * SYMBOL_HEIGHT
 
     def draw(self):
-        for i in range(NUM_ROWS + 1):  # +1 for smooth scrolling
-            symbol_y = (self.offset + i * ORIG_SYMBOL_SIZE) % strip_height
-            rect = pygame.Rect(0, symbol_y, ORIG_SYMBOL_SIZE, ORIG_SYMBOL_SIZE)
-            scaled = pygame.transform.scale(
-                reel_strip.subsurface(rect),
-                (DRAW_SYMBOL_SIZE, DRAW_SYMBOL_SIZE)
-            )
-            y = MARGIN_TOP + i * DRAW_SYMBOL_SIZE - (self.offset % ORIG_SYMBOL_SIZE)
-            screen.blit(scaled, (self.x, y))
+        for i in range(NUM_ROWS + 1):
+            y_index = (self.offset + i * SYMBOL_HEIGHT) % strip_height
+            rect = pygame.Rect(0, y_index, SYMBOL_WIDTH, SYMBOL_HEIGHT)
+            image = reel_strip.subsurface(rect)
+            draw_y = i * SYMBOL_HEIGHT - (self.offset % SYMBOL_HEIGHT)
+            screen.blit(image, (self.x, draw_y))
 
-# Initialize reels
+# Init reels
 reels = []
-for i in range(NUM_REELS):
-    x = START_X + i * (DRAW_SYMBOL_SIZE + REEL_SPACING)
+for i in range(REEL_COUNT):
+    x = 100 + i * (SYMBOL_WIDTH + 40)
     reels.append(Reel(x))
 
 # Main loop
@@ -78,25 +68,23 @@ running = True
 spinning = False
 
 while running:
-    screen.fill((0, 0, 0))  # clear screen with black
+    screen.fill((0, 0, 0))
 
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
 
-        elif event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_SPACE and not spinning:
+        elif event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE:
+            if not spinning:
                 for reel in reels:
                     reel.start_spin()
                 spinning = True
 
-    # Update and draw reels
-    spinning = False
+    spinning = any(reel.spinning for reel in reels)
+
     for reel in reels:
         reel.update()
         reel.draw()
-        if reel.spinning:
-            spinning = True
 
     pygame.display.flip()
     clock.tick(FPS)
