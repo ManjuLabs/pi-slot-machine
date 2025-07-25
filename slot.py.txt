@@ -59,13 +59,22 @@ while running:
 
     now = time()
 
-total_width = REEL_COUNT * SYMBOL_WIDTH + (REEL_COUNT - 1) * REEL_GAP
-start_x = (SCREEN_WIDTH - total_width) // 2
+    # Calculate total width and starting x for centering
+    total_width = REEL_COUNT * SYMBOL_WIDTH + (REEL_COUNT - 1) * REEL_GAP
+    start_x = (SCREEN_WIDTH - total_width) // 2
 
-for i, reel in enumerate(reels):
-    # ... spinning logic stays the same ...
-    x = start_x + i * (SYMBOL_WIDTH + REEL_GAP)
-    draw_reel(x, reel["offset"])
+    for i, reel in enumerate(reels):
+        # Update offset if spinning
+        if reel["spinning"]:
+            elapsed = now - reel["start_time"]
+            if elapsed > SPIN_DURATION + reel["delay"]:
+                reel["spinning"] = False
+                reel["offset"] = (int(reel["offset"] / SYMBOL_HEIGHT) % SYMBOL_COUNT) * SYMBOL_HEIGHT
+            else:
+                reel["offset"] = (reel["offset"] + 32) % strip_img.get_height()
+
+        x = start_x + i * (SYMBOL_WIDTH + REEL_GAP)
+        draw_reel(x, reel["offset"])
 
     pygame.display.flip()
     clock.tick(FPS)
