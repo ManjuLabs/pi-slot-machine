@@ -1,6 +1,7 @@
 import pygame
 import sys
 import random
+import math
 from time import time
 
 # --- CONFIGURATION ---
@@ -13,7 +14,7 @@ SYMBOL_WIDTH = 128  # Original image width
 TARGET_WIDTH = 328  # Scaled reel width
 VISIBLE_SYMBOLS = 3
 VISIBLE_HEIGHT = VISIBLE_SYMBOLS * SYMBOL_HEIGHT
-TOP_MARGIN = (SCREEN_HEIGHT - VISIBLE_HEIGHT) // 2
+TOP_MARGIN = math.floor((SCREEN_HEIGHT - VISIBLE_HEIGHT) / 2)
 SPIN_DURATION = 2
 SPIN_SPEED = 64
 REEL_GAP = 20
@@ -24,11 +25,11 @@ screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
 pygame.display.set_caption("3-Reel Slot Machine")
 clock = pygame.time.Clock()
 
-# Load and slice the reel strip from assets
+# Load and slice the reel strip
 reel_strip = pygame.image.load("assets/reel_strip.png").convert_alpha()
 SYMBOL_COUNT = reel_strip.get_height() // SYMBOL_HEIGHT
 
-# Pre-slice and scale symbols for performance
+# Preprocess symbols: slice and scale for performance
 symbol_surfaces = []
 for i in range(SYMBOL_COUNT):
     rect = pygame.Rect(0, i * SYMBOL_HEIGHT, SYMBOL_WIDTH, SYMBOL_HEIGHT)
@@ -36,7 +37,7 @@ for i in range(SYMBOL_COUNT):
     scaled = pygame.transform.scale(symbol, (TARGET_WIDTH, SYMBOL_HEIGHT)).convert_alpha()
     symbol_surfaces.append(scaled)
 
-# Reel state
+# Reel states
 offsets = [random.randint(0, SYMBOL_COUNT - 1) * SYMBOL_HEIGHT for _ in range(REEL_COUNT)]
 spinning = [False] * REEL_COUNT
 start_times = [0] * REEL_COUNT
@@ -58,14 +59,14 @@ def draw_reels():
         symbols_to_draw = VISIBLE_SYMBOLS + 2
         for j in range(symbols_to_draw):
             index = (start_index + j) % SYMBOL_COUNT
-            y = TOP_MARGIN + ((j - 1) * SYMBOL_HEIGHT) - y_shift  # Center-adjusted
+            y = TOP_MARGIN + ((j - 1) * SYMBOL_HEIGHT) - y_shift
             screen.blit(symbol_surfaces[index], (x, y))
 
     # Mask top and bottom
     pygame.draw.rect(screen, (0, 0, 0), pygame.Rect(0, 0, SCREEN_WIDTH, TOP_MARGIN))
     pygame.draw.rect(screen, (0, 0, 0), pygame.Rect(0, TOP_MARGIN + VISIBLE_HEIGHT, SCREEN_WIDTH, SCREEN_HEIGHT - (TOP_MARGIN + VISIBLE_HEIGHT)))
 
-    # Draw highlight box over middle symbol (payline)
+    # Highlight box around center symbol of each reel
     for x in reel_positions:
         highlight_rect = pygame.Rect(
             x,
@@ -73,7 +74,7 @@ def draw_reels():
             TARGET_WIDTH,
             SYMBOL_HEIGHT
         )
-        pygame.draw.rect(screen, (255, 255, 0), highlight_rect, 4)  # Yellow border
+        pygame.draw.rect(screen, (255, 255, 0), highlight_rect, 4)  # Yellow border, 4px
 
     pygame.display.flip()
 
@@ -81,7 +82,7 @@ def start_spin():
     draw_reels.has_drawn_idle = False
     for i in range(REEL_COUNT):
         spinning[i] = True
-        start_times[i] = time() + i * 0.3  # staggered start
+        start_times[i] = time() + i * 0.3  # stagger start time
 
 def update_reels():
     now = time()
