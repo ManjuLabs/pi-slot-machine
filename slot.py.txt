@@ -8,9 +8,9 @@ SCREEN_WIDTH = 1024
 SCREEN_HEIGHT = 600
 FPS = 30
 REEL_COUNT = 3
-SYMBOL_HEIGHT = 128  # Match your image!
-SPIN_DURATION = 2  # seconds each reel spins
+VISIBLE_SYMBOLS = 3
 REEL_GAP = 40
+SPIN_DURATION = 2  # seconds each reel spins
 
 # --- INIT ---
 pygame.init()
@@ -19,9 +19,19 @@ pygame.display.set_caption("Slot Machine")
 clock = pygame.time.Clock()
 
 # --- LOAD ASSETS ---
-strip_img = pygame.image.load("assets/reel_strip.png").convert()
-SYMBOL_COUNT = strip_img.get_height() // SYMBOL_HEIGHT
+strip_img = pygame.image.load("assets/reel_strip.png").convert_alpha()
+
+# --- Calculate dynamic symbol size ---
+SYMBOL_HEIGHT = SCREEN_HEIGHT // VISIBLE_SYMBOLS  # 600 / 3 = 200
+SYMBOL_COUNT = strip_img.get_height() // 128  # original symbol height
 SYMBOL_WIDTH = strip_img.get_width()
+
+# Calculate reel width scale factor
+scale_factor = SYMBOL_HEIGHT / 128  # assuming original symbol height is 128
+SCALED_SYMBOL_WIDTH = int(SYMBOL_WIDTH * scale_factor)
+
+# --- Scale entire strip image ---
+strip_img = pygame.transform.smoothscale(strip_img, (SCALED_SYMBOL_WIDTH, SYMBOL_COUNT * SYMBOL_HEIGHT))
 
 # --- Prepare Reels ---
 reels = []
@@ -36,22 +46,20 @@ for i in range(REEL_COUNT):
 
 # --- DRAW SYMBOLS ---
 def draw_reel(reel_x, offset):
-    for i in range(3):  # 3 visible symbols
+    for i in range(VISIBLE_SYMBOLS):  # 3 visible symbols
         src_y = (offset + i * SYMBOL_HEIGHT) % strip_img.get_height()
         if src_y + SYMBOL_HEIGHT <= strip_img.get_height():
-            # Full symbol fits in image bounds
-            symbol = strip_img.subsurface((0, src_y, SYMBOL_WIDTH, SYMBOL_HEIGHT))
+            symbol = strip_img.subsurface((0, src_y, SCALED_SYMBOL_WIDTH, SYMBOL_HEIGHT))
         else:
-            # Wrap around: stitch two parts together
-            first_part = strip_img.subsurface((0, src_y, SYMBOL_WIDTH, strip_img.get_height() - src_y))
-            second_part = strip_img.subsurface((0, 0, SYMBOL_WIDTH, SYMBOL_HEIGHT - (strip_img.get_height() - src_y)))
+            first_part = strip_img.subsurface((0, src_y, SCALED_SYMBOL_WIDTH, strip_img.get_height() - src_y))
+            second_part = strip_img.subsurface((0, 0, SCALED_SYMBOL_WIDTH, SYMBOL_HEIGHT - (strip_img.get_height() - src_y)))
 
-            # Create temporary surface to stitch both
-            symbol = pygame.Surface((SYMBOL_WIDTH, SYMBOL_HEIGHT)).convert()
+            symbol = pygame.Surface((SCALED_SYMBOL_WIDTH, SYMBOL_HEIGHT), pygame.SRCALPHA)
             symbol.blit(first_part, (0, 0))
             symbol.blit(second_part, (0, strip_img.get_height() - src_y))
 
-        screen.blit(symbol, (reel_x, 100 + i * SYMBOL_HEIGHT))
+        y_pos = (SCREEN_HEIGHT - VISIBLE_SYMBOLS * SYMBOL_HEIGHT) // 2 + i * SYMBOL_HEIGHT
+        screen.blit(symbol, (reel_x, y_pos))
 
 # --- MAIN LOOP ---
 running = True
@@ -74,7 +82,8 @@ while running:
             else:
                 reel["offset"] = (reel["offset"] + 32) % strip_img.get_height()
 
-        x = (SCREEN_WIDTH - (REEL_COUNT * SYMBOL_WIDTH + (REEL_COUNT - 1) * REEL_GAP)) // 2 + i * (SYMBOL_WIDTH + REEL_GAP)
+        total_width = REEL_COUNT * SCALED_SYMBOL_WIDTH + (REEL_COUNT - 1) * REEL_GAP
+        x = (SCREEN_WIDTH - total_width) // 2 + i * (SCALED_SYMBOL_WIDTH + REEL_GAP)
         draw_reel(x, reel["offset"])
 
     pygame.display.flip()
