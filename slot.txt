@@ -8,7 +8,7 @@ pygame.display.set_caption("slot machine kiosk")
 CLOCK = pygame.time.Clock()
 
 while True:
-	Window.fill((0, 0, 0))
+	WINDOW.fill((0, 0, 0))
 	
 	CLOCK.tick(60)
 	pygame.display.update()
