@@ -7,7 +7,7 @@ STRIP_IMAGE = "assets/Ace.png"
 SYMBOL_COUNT = 6
 REEL_COUNT = 3
 SPIN_SPEED = 40
-FPS = 6
+FPS = 4
 
 # Set resolution
 SCREEN_WIDTH = 1024
@@ -126,6 +126,7 @@ while running:
 
 pygame.quit()
 sys.exit()
+
 
 
 
