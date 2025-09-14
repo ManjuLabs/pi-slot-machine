@@ -3,7 +3,7 @@ import random
 import sys
 
 # --- CONFIGURATION ---
-STRIP_IMAGE = "graphics/Ace.png"
+STRIP_IMAGE = "assets/Ace.png"
 SYMBOL_COUNT = 6
 #SYMBOL_WIDTH = 150
 SYMBOL_WIDTH = 1024/3
@@ -124,3 +124,4 @@ while running:
 
 pygame.quit()
 sys.exit()
+
