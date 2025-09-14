@@ -31,6 +31,9 @@ strip_img = pygame.transform.scale(strip_img, (330, 1200))
 symbol_height = strip_img.get_height() // SYMBOL_COUNT
 symbol_width = strip_img.get_width()
 
+music = pygame.mixer.Sound("assets/TalkingCuteChiptune.mp3")
+spin_sound = pygame.mixer.Sound("assets/button_1.mp3)
+
 # --- CUT INDIVIDUAL SYMBOLS ---
 symbols = []
 for i in range(SYMBOL_COUNT):
@@ -100,6 +103,7 @@ def all_stopped():
 # --- MAIN LOOP ---
 start_all_reels()
 running = True
+music.play()
 
 while running:
     for event in pygame.event.get():
@@ -108,6 +112,7 @@ while running:
 
         elif event.type == pygame.KEYDOWN:
             if event.key == pygame.K_SPACE and all_stopped():
+                spin_sound.play()
                 start_all_reels()
 
     # Update
@@ -124,6 +129,7 @@ while running:
 
 pygame.quit()
 sys.exit()
+
 
 
 
