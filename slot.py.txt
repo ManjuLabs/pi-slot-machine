@@ -68,7 +68,7 @@ class Reel:
         if self.spinning:
             move = min(self.spin_speed, self.spin_distance - self.current_distance)
             self.current_distance += move
-            self.offset = (self.offset + move) % (SYMBOL_COUNT * symbol_height)
+            self.offset = (self.offset - move) % (SYMBOL_COUNT * symbol_height)
 
             if self.current_distance >= self.spin_distance:
                 self.spinning = False
@@ -124,6 +124,7 @@ while running:
 
 pygame.quit()
 sys.exit()
+
 
 
 
