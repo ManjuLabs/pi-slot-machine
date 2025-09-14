@@ -11,7 +11,7 @@ SYMBOL_WIDTH = 1024/3
 SYMBOL_HEIGHT = 300
 REEL_COUNT = 3
 SPIN_SPEED = 150  # Pixels per frame
-FPS = 6
+FPS = 8
 #WINDOW_WIDTH = SYMBOL_WIDTH * REEL_COUNT
 WINDOW_WIDTH = 1024
 #WINDOW_HEIGHT = SYMBOL_HEIGHT
@@ -124,4 +124,5 @@ while running:
 
 pygame.quit()
 sys.exit()
+
 
