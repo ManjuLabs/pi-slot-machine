@@ -122,6 +122,9 @@ while running:
                     spin_sound.play()
                     start_all_reels()
 
+                elif event.key == pygame.K_v and (pygame.key.get_mods() & pygame.KMOD_CTRL) and all_stopped():
+                    spin_sound.play()
+                    start_all_reels()
     # Update
     for reel in reels:
         reel.update()
@@ -136,6 +139,7 @@ while running:
 
 pygame.quit()
 sys.exit()
+
 
 
 
