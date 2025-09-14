@@ -5,19 +5,14 @@ import sys
 # --- CONFIGURATION ---
 STRIP_IMAGE = "assets/Ace.png"
 SYMBOL_COUNT = 6
-#SYMBOL_WIDTH = 150
-SYMBOL_WIDTH = 1024/3
-#SYMBOL_HEIGHT = 150  # Height of one symbol
-SYMBOL_HEIGHT = 300
+SYMBOL_WIDTH = 150
+SYMBOL_HEIGHT = 100  # 600 / 6
 REEL_COUNT = 3
 SPIN_SPEED = 40  # Pixels per frame
-FPS = 8
-#WINDOW_WIDTH = SYMBOL_WIDTH * REEL_COUNT
-WINDOW_WIDTH = 1024
-#WINDOW_HEIGHT = SYMBOL_HEIGHT
-WINDOW_HEIGHT = 600
-# Weights for random selection (optional)
-SYMBOL_WEIGHTS = [1, 1, 1, 1, 1, 1]  # Equal chance for now
+FPS = 4  # Lower FPS for performance
+WINDOW_WIDTH = SYMBOL_WIDTH * REEL_COUNT
+WINDOW_HEIGHT = SYMBOL_HEIGHT * 3  # Show 3 symbols per reel
+SYMBOL_WEIGHTS = [1] * SYMBOL_COUNT  # Equal chance
 
 # --- INITIALIZATION ---
 pygame.init()
@@ -25,25 +20,25 @@ screen = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
 pygame.display.set_caption("Slot Machine - 3 Reels")
 clock = pygame.time.Clock()
 
-# --- LOAD IMAGE STRIP ---
-strip_img = pygame.image.load(STRIP_IMAGE).convert_alpha()
-strip_img = pygame.transform.scale(strip_img, (330, 1200))
-symbol_height = strip_img.get_height() // SYMBOL_COUNT
-symbol_width = strip_img.get_width()
+# --- LOAD & SCALE IMAGE STRIP ---
+strip_img = pygame.image.load(STRIP_IMAGE)
+strip_img = pygame.transform.scale(strip_img, (SYMBOL_WIDTH, SYMBOL_HEIGHT * SYMBOL_COUNT)).convert()
 
 # --- CUT INDIVIDUAL SYMBOLS ---
 symbols = []
 for i in range(SYMBOL_COUNT):
-    rect = pygame.Rect(0, i * symbol_height, symbol_width, symbol_height)
-    image = strip_img.subsurface(rect)
+    rect = pygame.Rect(0, i * SYMBOL_HEIGHT, SYMBOL_WIDTH, SYMBOL_HEIGHT)
+    image = strip_img.subsurface(rect).copy()
     symbols.append(image)
+
+# Pre-calculate reel image height
+REEL_IMG_HEIGHT = SYMBOL_HEIGHT * SYMBOL_COUNT
 
 # --- REEL CLASS ---
 class Reel:
     def __init__(self, x_pos):
         self.x = x_pos
         self.offset = 0
-        self.symbols = symbols
         self.spinning = False
         self.target_symbol = None
         self.final_offset = 0
@@ -56,39 +51,32 @@ class Reel:
         self.offset = 0
         self.current_distance = 0
 
-        # Randomly choose symbol using weights
         self.target_symbol = random.choices(range(SYMBOL_COUNT), weights=SYMBOL_WEIGHTS)[0]
-
-        # Calculate how far to spin: a few full loops + alignment
         full_loops = random.randint(3, 6)
-        self.final_offset = self.target_symbol * symbol_height
-        self.spin_distance = full_loops * SYMBOL_COUNT * symbol_height + self.final_offset
+        self.final_offset = self.target_symbol * SYMBOL_HEIGHT
+        self.spin_distance = full_loops * SYMBOL_COUNT * SYMBOL_HEIGHT + self.final_offset
 
     def update(self):
         if self.spinning:
             move = min(self.spin_speed, self.spin_distance - self.current_distance)
             self.current_distance += move
-            self.offset = (self.offset + move) % (SYMBOL_COUNT * symbol_height)
+            self.offset = (self.offset + move) % REEL_IMG_HEIGHT
 
             if self.current_distance >= self.spin_distance:
                 self.spinning = False
-                self.offset = self.final_offset % (SYMBOL_COUNT * symbol_height)
+                self.offset = self.final_offset % REEL_IMG_HEIGHT
 
     def draw(self, surface):
-        # Draw 3 symbols to cover view
-        center_idx = int(self.offset // symbol_height) % SYMBOL_COUNT
-        y_offset = -(self.offset % symbol_height)
+        center_idx = int(self.offset // SYMBOL_HEIGHT) % SYMBOL_COUNT
+        y_offset = -(self.offset % SYMBOL_HEIGHT)
 
-        for i in range(3):
+        for i in range(3):  # Draw center and one above/below
             symbol_idx = (center_idx + i - 1) % SYMBOL_COUNT
-            y = y_offset + (i * symbol_height)
-            surface.blit(self.symbols[symbol_idx], (self.x, y))
+            y = y_offset + (i * SYMBOL_HEIGHT)
+            surface.blit(symbols[symbol_idx], (self.x, y))
 
 # --- SETUP MULTIPLE REELS ---
-reels = []
-for i in range(REEL_COUNT):
-    x = i * SYMBOL_WIDTH
-    reels.append(Reel(x))
+reels = [Reel(i * SYMBOL_WIDTH) for i in range(REEL_COUNT)]
 
 def start_all_reels():
     for reel in reels:
@@ -100,6 +88,7 @@ def all_stopped():
 # --- MAIN LOOP ---
 start_all_reels()
 running = True
+needs_redraw = True  # Only redraw when needed
 
 while running:
     for event in pygame.event.get():
@@ -109,21 +98,30 @@ while running:
         elif event.type == pygame.KEYDOWN:
             if event.key == pygame.K_SPACE and all_stopped():
                 start_all_reels()
+                needs_redraw = True
 
-    # Update
+    # Update reels
+    spinning_now = False
     for reel in reels:
+        prev_spinning = reel.spinning
         reel.update()
+        if reel.spinning:
+            spinning_now = True
+        if prev_spinning != reel.spinning:
+            needs_redraw = True
 
-    # Draw
-    screen.fill((255, 255, 255))
-    for reel in reels:
-        reel.draw(screen)
+    # Draw only if spinning or just stopped
+    if spinning_now or needs_redraw:
+        screen.fill((255, 255, 255))
+        for reel in reels:
+            reel.draw(screen)
+        pygame.display.flip()
+        needs_redraw = spinning_now  # Keep redrawing while spinning
 
-    pygame.display.flip()
     clock.tick(FPS)
+    #pygame.display.set_caption(f"Slot Machine - FPS: {clock.get_fps():.2f}")
 
 pygame.quit()
-sys.exit()
 
 
 
