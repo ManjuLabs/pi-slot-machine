@@ -32,7 +32,7 @@ symbol_height = strip_img.get_height() // SYMBOL_COUNT
 symbol_width = strip_img.get_width()
 
 music = pygame.mixer.Sound("assets/TalkingCuteChiptune.mp3")
-spin_sound = pygame.mixer.Sound("assets/button_1.mp3)
+spin_sound = pygame.mixer.Sound("assets/button_1.mp3")
 
 # --- CUT INDIVIDUAL SYMBOLS ---
 symbols = []
@@ -129,6 +129,7 @@ while running:
 
 pygame.quit()
 sys.exit()
+
 
 
 
