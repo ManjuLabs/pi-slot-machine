@@ -5,34 +5,37 @@ import sys
 # --- CONFIGURATION ---
 STRIP_IMAGE = "assets/Ace.png"
 SYMBOL_COUNT = 6
-SYMBOL_WIDTH = 150
-SYMBOL_HEIGHT = 100  # 600 / 6
 REEL_COUNT = 3
-SPIN_SPEED = 40  # Pixels per frame
-FPS = 4  # Lower FPS for performance
-WINDOW_WIDTH = SYMBOL_WIDTH * REEL_COUNT
-WINDOW_HEIGHT = SYMBOL_HEIGHT * 3  # Show 3 symbols per reel
-SYMBOL_WEIGHTS = [1] * SYMBOL_COUNT  # Equal chance
+SPIN_SPEED = 40
+FPS = 6
+
+# Set resolution
+SCREEN_WIDTH = 1024
+SCREEN_HEIGHT = 600
+
+# Auto-calculate symbol sizes
+SYMBOL_WIDTH = SCREEN_WIDTH // REEL_COUNT  # 341
+SYMBOL_HEIGHT = SCREEN_HEIGHT // 3        # 200
+REEL_IMG_HEIGHT = SYMBOL_HEIGHT * SYMBOL_COUNT
+
+SYMBOL_WEIGHTS = [1] * SYMBOL_COUNT  # Equal probability
 
 # --- INITIALIZATION ---
 pygame.init()
-screen = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
-pygame.display.set_caption("Slot Machine - 3 Reels")
+screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.FULLSCREEN)
+pygame.display.set_caption("Slot Machine - Fullscreen")
 clock = pygame.time.Clock()
 
-# --- LOAD & SCALE IMAGE STRIP ---
+# --- LOAD AND SCALE IMAGE STRIP ---
 strip_img = pygame.image.load(STRIP_IMAGE)
-strip_img = pygame.transform.scale(strip_img, (SYMBOL_WIDTH, SYMBOL_HEIGHT * SYMBOL_COUNT)).convert()
+strip_img = pygame.transform.scale(strip_img, (SYMBOL_WIDTH, REEL_IMG_HEIGHT)).convert()
 
 # --- CUT INDIVIDUAL SYMBOLS ---
 symbols = []
 for i in range(SYMBOL_COUNT):
     rect = pygame.Rect(0, i * SYMBOL_HEIGHT, SYMBOL_WIDTH, SYMBOL_HEIGHT)
-    image = strip_img.subsurface(rect).copy()
-    symbols.append(image)
-
-# Pre-calculate reel image height
-REEL_IMG_HEIGHT = SYMBOL_HEIGHT * SYMBOL_COUNT
+    symbol_img = strip_img.subsurface(rect).copy()
+    symbols.append(symbol_img)
 
 # --- REEL CLASS ---
 class Reel:
@@ -50,7 +53,6 @@ class Reel:
         self.spinning = True
         self.offset = 0
         self.current_distance = 0
-
         self.target_symbol = random.choices(range(SYMBOL_COUNT), weights=SYMBOL_WEIGHTS)[0]
         full_loops = random.randint(3, 6)
         self.final_offset = self.target_symbol * SYMBOL_HEIGHT
@@ -70,12 +72,12 @@ class Reel:
         center_idx = int(self.offset // SYMBOL_HEIGHT) % SYMBOL_COUNT
         y_offset = -(self.offset % SYMBOL_HEIGHT)
 
-        for i in range(3):  # Draw center and one above/below
+        for i in range(3):
             symbol_idx = (center_idx + i - 1) % SYMBOL_COUNT
             y = y_offset + (i * SYMBOL_HEIGHT)
             surface.blit(symbols[symbol_idx], (self.x, y))
 
-# --- SETUP MULTIPLE REELS ---
+# --- SETUP REELS ---
 reels = [Reel(i * SYMBOL_WIDTH) for i in range(REEL_COUNT)]
 
 def start_all_reels():
@@ -88,7 +90,7 @@ def all_stopped():
 # --- MAIN LOOP ---
 start_all_reels()
 running = True
-needs_redraw = True  # Only redraw when needed
+needs_redraw = True
 
 while running:
     for event in pygame.event.get():
@@ -96,32 +98,34 @@ while running:
             running = False
 
         elif event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_SPACE and all_stopped():
+            if event.key == pygame.K_ESCAPE:
+                running = False  # Escape key exits fullscreen
+            elif event.key == pygame.K_SPACE and all_stopped():
                 start_all_reels()
                 needs_redraw = True
 
-    # Update reels
+    # Update
     spinning_now = False
     for reel in reels:
-        prev_spinning = reel.spinning
+        was_spinning = reel.spinning
         reel.update()
         if reel.spinning:
             spinning_now = True
-        if prev_spinning != reel.spinning:
+        if was_spinning != reel.spinning:
             needs_redraw = True
 
-    # Draw only if spinning or just stopped
+    # Draw
     if spinning_now or needs_redraw:
         screen.fill((255, 255, 255))
         for reel in reels:
             reel.draw(screen)
         pygame.display.flip()
-        needs_redraw = spinning_now  # Keep redrawing while spinning
+        needs_redraw = spinning_now
 
     clock.tick(FPS)
-    #pygame.display.set_caption(f"Slot Machine - FPS: {clock.get_fps():.2f}")
 
 pygame.quit()
+sys.exit()
 
 
 
