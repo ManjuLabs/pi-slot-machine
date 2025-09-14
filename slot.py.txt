@@ -21,7 +21,7 @@ SYMBOL_WEIGHTS = [1, 1, 1, 1, 1, 1]  # Equal chance for now
 
 # --- INITIALIZATION ---
 pygame.init()
-screen = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT), pygame.FULSCREEN)
+screen = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT), pygame.FULLSCREEN)
 pygame.display.set_caption("Slot Machine - 3 Reels")
 clock = pygame.time.Clock()
 
@@ -124,6 +124,7 @@ while running:
 
 pygame.quit()
 sys.exit()
+
 
 
 
