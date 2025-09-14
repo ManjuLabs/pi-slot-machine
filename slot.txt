@@ -1,14 +1,126 @@
 import pygame
+import random
+import sys
 
+# --- CONFIGURATION ---
+STRIP_IMAGE = "graphics/Ace.png"
+SYMBOL_COUNT = 6
+#SYMBOL_WIDTH = 150
+SYMBOL_WIDTH = 1024/3
+#SYMBOL_HEIGHT = 150  # Height of one symbol
+SYMBOL_HEIGHT = 300
+REEL_COUNT = 3
+SPIN_SPEED = 40  # Pixels per frame
+FPS = 60
+#WINDOW_WIDTH = SYMBOL_WIDTH * REEL_COUNT
+WINDOW_WIDTH = 1024
+#WINDOW_HEIGHT = SYMBOL_HEIGHT
+WINDOW_HEIGHT = 600
+# Weights for random selection (optional)
+SYMBOL_WEIGHTS = [1, 1, 1, 1, 1, 1]  # Equal chance for now
+
+# --- INITIALIZATION ---
 pygame.init()
+screen = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
+pygame.display.set_caption("Slot Machine - 3 Reels")
+clock = pygame.time.Clock()
 
-WINDOW = pygame.display.set_mode((1024, 600))
-pygame.display.set_caption("slot machine kiosk")
+# --- LOAD IMAGE STRIP ---
+strip_img = pygame.image.load(STRIP_IMAGE).convert_alpha()
+strip_img = pygame.transform.scale(strip_img, (330, 1200))
+symbol_height = strip_img.get_height() // SYMBOL_COUNT
+symbol_width = strip_img.get_width()
 
-CLOCK = pygame.time.Clock()
+# --- CUT INDIVIDUAL SYMBOLS ---
+symbols = []
+for i in range(SYMBOL_COUNT):
+    rect = pygame.Rect(0, i * symbol_height, symbol_width, symbol_height)
+    image = strip_img.subsurface(rect)
+    symbols.append(image)
 
-while True:
-	WINDOW.fill((0, 0, 0))
-	
-	CLOCK.tick(60)
-	pygame.display.update()
+# --- REEL CLASS ---
+class Reel:
+    def __init__(self, x_pos):
+        self.x = x_pos
+        self.offset = 0
+        self.symbols = symbols
+        self.spinning = False
+        self.target_symbol = None
+        self.final_offset = 0
+        self.spin_distance = 0
+        self.spin_speed = SPIN_SPEED
+        self.current_distance = 0
+
+    def start_spin(self):
+        self.spinning = True
+        self.offset = 0
+        self.current_distance = 0
+
+        # Randomly choose symbol using weights
+        self.target_symbol = random.choices(range(SYMBOL_COUNT), weights=SYMBOL_WEIGHTS)[0]
+
+        # Calculate how far to spin: a few full loops + alignment
+        full_loops = random.randint(3, 6)
+        self.final_offset = self.target_symbol * symbol_height
+        self.spin_distance = full_loops * SYMBOL_COUNT * symbol_height + self.final_offset
+
+    def update(self):
+        if self.spinning:
+            move = min(self.spin_speed, self.spin_distance - self.current_distance)
+            self.current_distance += move
+            self.offset = (self.offset + move) % (SYMBOL_COUNT * symbol_height)
+
+            if self.current_distance >= self.spin_distance:
+                self.spinning = False
+                self.offset = self.final_offset % (SYMBOL_COUNT * symbol_height)
+
+    def draw(self, surface):
+        # Draw 3 symbols to cover view
+        center_idx = int(self.offset // symbol_height) % SYMBOL_COUNT
+        y_offset = -(self.offset % symbol_height)
+
+        for i in range(3):
+            symbol_idx = (center_idx + i - 1) % SYMBOL_COUNT
+            y = y_offset + (i * symbol_height)
+            surface.blit(self.symbols[symbol_idx], (self.x, y))
+
+# --- SETUP MULTIPLE REELS ---
+reels = []
+for i in range(REEL_COUNT):
+    x = i * SYMBOL_WIDTH
+    reels.append(Reel(x))
+
+def start_all_reels():
+    for reel in reels:
+        reel.start_spin()
+
+def all_stopped():
+    return all(not reel.spinning for reel in reels)
+
+# --- MAIN LOOP ---
+start_all_reels()
+running = True
+
+while running:
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            running = False
+
+        elif event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_SPACE and all_stopped():
+                start_all_reels()
+
+    # Update
+    for reel in reels:
+        reel.update()
+
+    # Draw
+    screen.fill((255, 255, 255))
+    for reel in reels:
+        reel.draw(screen)
+
+    pygame.display.flip()
+    clock.tick(FPS)
+
+pygame.quit()
+sys.exit()
