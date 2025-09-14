@@ -117,6 +117,10 @@ while running:
                 if event.key == pygame.K_SPACE and all_stopped():
                     spin_sound.play()
                     start_all_reels()
+                
+                elif event.key == pygame.K_c and (pygame.key.get_mods() & pygame.KMOD_CTRL) and all_stopped():
+                    spin_sound.play()
+                    start_all_reels()
 
     # Update
     for reel in reels:
