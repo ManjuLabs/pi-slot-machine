@@ -1,8 +1,6 @@
 import pygame
 import random
 import sys
-import os
-os.putenv('SDL_NOMOUSE', '1')
 
 # --- CONFIGURATION ---
 STRIP_IMAGE = "assets/Ace.png"
@@ -142,6 +140,7 @@ while running:
 
 pygame.quit()
 sys.exit()
+
 
 
 
