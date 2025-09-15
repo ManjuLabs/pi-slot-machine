@@ -2,7 +2,6 @@ import pygame
 import random
 import sys
 import os
-os.putenv('SDL_VIDEODRIVER', 'fbcon')
 os.putenv('SDL_NOMOUSE', '1')
 
 # --- CONFIGURATION ---
@@ -24,6 +23,7 @@ SYMBOL_WEIGHTS = [1, 1, 1, 1, 1, 1]  # Equal chance for now
 
 # --- INITIALIZATION ---
 pygame.init()
+pygame.mouse.set_visible(False)
 screen = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT), pygame.FULLSCREEN)
 pygame.display.set_caption("Slot Machine - 3 Reels")
 clock = pygame.time.Clock()
@@ -142,6 +142,7 @@ while running:
 
 pygame.quit()
 sys.exit()
+
 
 
 
